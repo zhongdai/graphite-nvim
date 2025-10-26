@@ -1,5 +1,17 @@
 local M = {}
 
+local function join_cmd(cmdlist)
+  local parts = {}
+  for _, p in ipairs(cmdlist) do
+    if p:find('%s') then
+      table.insert(parts, string.format('"%s"', p))
+    else
+      table.insert(parts, p)
+    end
+  end
+  return table.concat(parts, ' ')
+end
+
 local function create_float_window(title, opts)
   local columns = vim.o.columns
   local lines = vim.o.lines - vim.o.cmdheight
@@ -120,6 +132,58 @@ function M.run_in_float(title, cmdlist, ui_opts, job_opts)
   })
 
   return { bufnr = buf, winid = win, job_id = job_id }
+end
+
+-- Run a command in the background and notify on finish.
+-- job_opts: { cwd?: string, on_exit?: fun(code, stdout, stderr) }
+function M.run_in_background(title, cmdlist, job_opts)
+  local stdout_acc = {}
+  local stderr_acc = {}
+  local job_id = vim.fn.jobstart(cmdlist, {
+    cwd = job_opts and job_opts.cwd or nil,
+    stdout_buffered = true,
+    stderr_buffered = true,
+    on_stdout = function(_, data, _)
+      if data and #data > 0 then
+        for _, line in ipairs(data) do
+          if line ~= '' then table.insert(stdout_acc, line) end
+        end
+      end
+    end,
+    on_stderr = function(_, data, _)
+      if data and #data > 0 then
+        for _, line in ipairs(data) do
+          if line ~= '' then table.insert(stderr_acc, line) end
+        end
+      end
+    end,
+    on_exit = function(_, code, _)
+      local cmd_str = join_cmd(cmdlist)
+      if code == 0 then
+        vim.notify(string.format('[Graphite] %s succeeded: %s', title or 'Command', cmd_str), vim.log.levels.INFO)
+      else
+        local function tail(tbl, n)
+          local len = #tbl
+          local start = math.max(1, len - n + 1)
+          local res = {}
+          for i = start, len do
+            table.insert(res, tbl[i])
+          end
+          return res
+        end
+        local err_tail = tail(stderr_acc, 10)
+        if #err_tail == 0 then
+          err_tail = tail(stdout_acc, 10)
+        end
+        local detail = (#err_tail > 0) and ('\n' .. table.concat(err_tail, '\n')) or ''
+        vim.notify(string.format('[Graphite] %s failed (exit %d): %s%s', title or 'Command', code, cmd_str, detail), vim.log.levels.ERROR)
+      end
+      if job_opts and job_opts.on_exit then
+        job_opts.on_exit(code, stdout_acc, stderr_acc)
+      end
+    end,
+  })
+  return job_id
 end
 
 return M

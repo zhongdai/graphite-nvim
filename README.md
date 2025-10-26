@@ -1,6 +1,6 @@
 # graphite-nvim
 
-Neovim plugin to run Graphite CLI commands from inside the editor. Create and submit stacks with a floating output window.
+Neovim plugin to run Graphite CLI commands from inside the editor. Create and submit stacks with async background execution and notifications.
 
 - Commands:
   - `:GraphiteCreateStack` — prompts for a message and runs `gt create -am "<msg>"`
@@ -25,7 +25,6 @@ Using `lazy.nvim`:
     require("graphite").setup({
       -- optional overrides
       -- gt_cmd = "gt",
-      -- float = { width = 0.9, height = 0.8, border = "rounded" },
     })
   end,
 }
@@ -48,7 +47,7 @@ use({
 - `:GraphiteSubmitStack` — submit PRs for the stack.
 - `:GraphiteLog` — view the current stack tree.
 
-Output is shown in a floating window. Press `q` or `<Esc>` to close.
+Runs in the background and notifies on success/failure. Check `:messages` for details if needed.
 
 ## License
 

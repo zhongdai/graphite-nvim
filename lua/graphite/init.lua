@@ -4,11 +4,6 @@ local M = {}
 
 local DEFAULTS = {
   gt_cmd = 'gt',
-  float = {
-    width = 0.9,
-    height = 0.8,
-    border = 'rounded',
-  },
 }
 
 M._config = vim.deepcopy(DEFAULTS)
@@ -34,13 +29,13 @@ function M.setup(opts)
   M._config = vim.tbl_deep_extend('force', vim.deepcopy(DEFAULTS), opts or {})
 end
 
-local function run_gt_in_float(title, args)
+local function run_gt_background(title, args)
   local cfg = ensure_config()
   local cmdlist = { cfg.gt_cmd }
   for _, a in ipairs(args) do
     table.insert(cmdlist, a)
   end
-  return runner.run_in_float(title, cmdlist, cfg.float, { cwd = current_cwd() })
+  return runner.run_in_background(title, cmdlist, { cwd = current_cwd() })
 end
 
 function M.create_stack()
@@ -53,7 +48,7 @@ function M.create_stack()
       vim.notify('Graphite create aborted (empty message).', vim.log.levels.WARN)
       return
     end
-    run_gt_in_float('gt create', { 'create', '-am', input })
+    run_gt_background('gt create', { 'create', '-am', input })
   end)
 end
 
@@ -62,7 +57,7 @@ function M.submit_stack()
   if not executable_or_error(cfg.gt_cmd) then
     return
   end
-  run_gt_in_float('gt submit --stack', { 'submit', '--stack' })
+  run_gt_background('gt submit --stack', { 'submit', '--stack' })
 end
 
 function M.log_stack()
@@ -70,7 +65,7 @@ function M.log_stack()
   if not executable_or_error(cfg.gt_cmd) then
     return
   end
-  run_gt_in_float('gt log', { 'log' })
+  run_gt_background('gt log', { 'log' })
 end
 
 return M
